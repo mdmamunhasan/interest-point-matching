@@ -34,7 +34,7 @@ def get_keypoints_with_descriptor(img, fast=None, orb=None, sift=None, surf=None
         kp = star.detect(img, None)
 
     if orb:
-        orb = cv2.ORB_create(100, patchSize=30)
+        orb = cv2.ORB_create(10)
         kp, des = orb.detectAndCompute(img, None)
     elif sift:
         sift = cv2.xfeatures2d.SIFT_create()
@@ -53,11 +53,8 @@ def find_homography(matches, kp1, kp2):
     points1 = np.zeros([len(matches), 2], dtype=np.float32)
     points2 = np.zeros([len(matches), 2], dtype=np.float32)
     for i, m in enumerate(matches):
-        try:
-            points1[i, :] = kp1[m.queryIdx].pt
-            points2[i, :] = kp2[m.queryIdx].pt
-        except IndexError as error:
-            continue
+        points1[i, :] = kp1[m.queryIdx].pt
+        points2[i, :] = kp2[m.queryIdx].pt
 
     h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
 
@@ -65,14 +62,14 @@ def find_homography(matches, kp1, kp2):
 
 
 def main():
-    img1 = cv2.imread(os.path.join("images", "IMG_0320.JPG"))
+    img1 = cv2.imread(os.path.join("images", "cv_desk.png"))
     corners1, dst1, gray1 = get_harris_corners(img1)
 
-    img2 = cv2.imread(os.path.join("images", "IMG_0321.JPG"))
+    img2 = cv2.imread(os.path.join("images", "cv_cover1.jpg"))
     corners2, dst2, gray2 = get_harris_corners(img2)
 
-    kp1, des1 = get_keypoints_with_descriptor(img1, orb=True)
-    kp2, des2 = get_keypoints_with_descriptor(img2, orb=True)
+    kp1, des1 = get_keypoints_with_descriptor(img1)
+    kp2, des2 = get_keypoints_with_descriptor(img2)
 
     # matcher = cv2.DescriptorMatcher_create(cv2.DescriptorMatcher_BRUTEFORCE_HAMMING)
     matcher = cv2.DescriptorMatcher_create(cv2.DescriptorMatcher_BRUTEFORCE_SL2)
@@ -90,7 +87,7 @@ def main():
     # cv2.imshow('img1', img1)
     # cv2.imshow('img2', img2)
     cv2.imshow('img3', img3)
-    cv2.imshow('img4', img4)
+    # cv2.imshow('img4', img4)
     if cv2.waitKey(0) & 0xff == 27:
         cv2.destroyAllWindows()
 
