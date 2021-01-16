@@ -1,7 +1,7 @@
-numpy>=1.19.5
-pandas>=1.2.0
-opencv-python>=4.5.1.48
-opencv_contrib_python>=4.5.1.48
-matplotlib>=3.3.3
+numpy
+pandas
+opencv-python
+opencv_contrib_python
+matplotlib
+scikit-image
 
-pts = cv2.KeyPoint_convert(kp)
