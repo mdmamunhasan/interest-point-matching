@@ -1,9 +1,61 @@
 import os
 import cv2
-import glob
+import pywt
+import PIL
+import pywt.data
 import numpy as np
-import pandas as pd
-from matplotlib import pyplot as plt
+from skimage import feature
+from skimage import transform
+import matplotlib.pyplot as plt
+
+def har_wavelet(image):
+    # Wavelet transform of image, and plot approximation and details
+    titles = ['Approximation', ' Horizontal detail',
+              'Vertical detail', 'Diagonal detail']
+    coeffs2 = pywt.dwt2(image, 'bior1.3')
+    LL, (LH, HL, HH) = coeffs2
+    fig = plt.figure(figsize=(12, 3))
+    for i, a in enumerate([LL, LH, HL, HH]):
+        ax = fig.add_subplot(1, 4, i + 1)
+        ax.imshow(a, interpolation="nearest", cmap=plt.cm.gray)
+        ax.set_title(titles[i], fontsize=10)
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+    fig.tight_layout()
+    plt.show()
+
+
+def integral_image(image):
+    # cv2.cvIntegral(image)
+    img = transform.integral.integral_image(image)
+    plt.imshow(img)
+    plt.show()
+
+
+def hessian_matrix(image):
+    # cv2.cvIntegral(image)
+    feature.hessian_matrix(image, sigma=1, mode='constant', cval=0, order='rc')
+    plt.imshow(image)
+    plt.show()
+
+
+def image_pyr():
+    pass
+
+
+def get_patch_image(image, patch_center):
+    # define some values
+    patch_scale = 0.15
+
+    # calc patch position and extract the patch
+    smaller_dim = np.min(image.shape[0:2])
+    patch_size = int(patch_scale * smaller_dim)
+    patch_x = int(patch_center[0] - patch_size / 2.)
+    patch_y = int(patch_center[1] - patch_size / 2.)
+    patch_image = image[patch_x:patch_x + patch_size, patch_y:patch_y + patch_size]
+
+    return patch_image
 
 
 def get_harris_corners(img):
@@ -19,78 +71,16 @@ def get_harris_corners(img):
     return corners, dst, gray
 
 
-def draw_circle(img, corners):
-    for i in range(1, len(corners)):
-        print(corners[i, 0])
-        cv2.circle(img, (int(corners[i, 0]), int(corners[i, 1])), 7, (0, 255, 0), 2)
-
-
-def get_keypoints_with_descriptor(img, fast=None, orb=None, sift=None, surf=None):
-    if fast:
-        fast = cv2.FastFeatureDetector_create()
-        kp = fast.detect(img, None)
-    else:
-        star = cv2.xfeatures2d.StarDetector_create()
-        kp = star.detect(img, None)
-
-    if orb:
-        orb = cv2.ORB_create(10)
-        kp, des = orb.detectAndCompute(img, None)
-    elif sift:
-        sift = cv2.xfeatures2d.SIFT_create()
-        kp, des = sift.detectAndCompute(img, None)
-    elif surf:
-        surf = cv2.xfeatures2d.SURF_create()
-        kp, des = surf.detectAndCompute(img, None)
-    else:
-        brief = cv2.xfeatures2d.BriefDescriptorExtractor_create()
-        kp, des = brief.compute(img, kp)
-
-    return kp, des
-
-
-def find_homography(matches, kp1, kp2):
-    points1 = np.zeros([len(matches), 2], dtype=np.float32)
-    points2 = np.zeros([len(matches), 2], dtype=np.float32)
-    for i, m in enumerate(matches):
-        points1[i, :] = kp1[m.queryIdx].pt
-        points2[i, :] = kp2[m.queryIdx].pt
-
-    h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
-
-    return h
-
-
-def main():
-    img1 = cv2.imread(os.path.join("images", "cv_desk.png"))
-    corners1, dst1, gray1 = get_harris_corners(img1)
-
-    img2 = cv2.imread(os.path.join("images", "cv_cover1.jpg"))
-    corners2, dst2, gray2 = get_harris_corners(img2)
-
-    kp1, des1 = get_keypoints_with_descriptor(img1)
-    kp2, des2 = get_keypoints_with_descriptor(img2)
-
-    # matcher = cv2.DescriptorMatcher_create(cv2.DescriptorMatcher_BRUTEFORCE_HAMMING)
-    matcher = cv2.DescriptorMatcher_create(cv2.DescriptorMatcher_BRUTEFORCE_SL2)
-    matches = matcher.match(des1, des2, None)
-    matches = sorted(matches, key=lambda x: x.distance)
-    img3 = cv2.drawMatches(img1, kp1, img2, kp2, matches, None)
-
-    h = find_homography(matches, kp1, kp2)
-    height, width, channel = img1.shape
-    img4 = cv2.warpPerspective(img2, h, (width, height))
-
-    img1[dst1 > 0.1 * dst1.max()] = [0, 0, 255]
-    img2[dst2 > 0.1 * dst2.max()] = [0, 0, 255]
-
-    # cv2.imshow('img1', img1)
-    # cv2.imshow('img2', img2)
-    cv2.imshow('img3', img3)
-    # cv2.imshow('img4', img4)
-    if cv2.waitKey(0) & 0xff == 27:
-        cv2.destroyAllWindows()
-
-
 if __name__ == '__main__':
-    main()
+    # Load image
+    img1 = cv2.imread(os.path.join("images", "cv_cover1.jpg"))
+
+    patches = []
+    corners, _, _ = get_harris_corners(img1)
+    for corner in corners:
+        patch = get_patch_image(img1, corner)
+        cA, (cH, cV, cD) = pywt.dwt2(patch, 'bior1.3')
+        patches.append(patch)
+
+    plt.imshow(cH)
+    plt.show()
