@@ -7,10 +7,19 @@ from matplotlib import pyplot as plt
 import skimage
 import pywt
 
+def get_magnitude(image):
+    dft = np.fft.fft2(image)
+    fshift = np.fft.fftshift(dft)
+    magnitude_spectrum = 20 * np.log(np.abs(fshift))
 
-def get_patch_image(image):
+    # dft = cv2.dft(np.float32(image), flags=cv2.DFT_COMPLEX_OUTPUT)
+    # dft_shift = np.fft.fftshift(dft)
+    # magnitude_spectrum = 20 * np.log(cv2.magnitude(dft_shift[:, :, 0], dft_shift[:, :, 1]))
+
+    return magnitude_spectrum
+
+def get_patch_image(image, patch_center):
     # define some values
-    patch_center = np.array([500, 450])
     patch_scale = 0.23
 
     # calc patch position and extract the patch
