@@ -85,7 +85,8 @@ def find_homography(matches, kp1, kp2):
         except IndexError as error:
             continue
 
-    h, mask = cv2.findHomography(points1, points2, cv2.RANSAC)
+    h, mask = cv2.findHomography(points1, points2, cv2.RANSAC, 5.0)
+    # h, mask = cv2.findHomography(points1, points2)
 
     return h
 
@@ -93,29 +94,52 @@ def find_homography(matches, kp1, kp2):
 def main():
     img1 = cv2.imread(os.path.join("images", "cv_cover1.jpg"))
     img2 = cv2.imread(os.path.join("images", "cv_desk.png"))
+    # rows, cols = img1.shape[:2]
+    # M = cv2.getRotationMatrix2D((cols / 2, rows / 2), 90, 1)
+    # img2 = cv2.warpAffine(img1, M, (cols, rows))
 
     kp1, des1 = get_keypoints_with_descriptor(img1)
     kp2, des2 = get_keypoints_with_descriptor(img2)
 
+    # matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
     matcher = cv2.DescriptorMatcher_create(cv2.DescriptorMatcher_BRUTEFORCE_HAMMING)
-    # matcher = cv2.DescriptorMatcher_create(cv2.DescriptorMatcher_BRUTEFORCE_SL2)
+    # # matcher = cv2.DescriptorMatcher_create(cv2.DescriptorMatcher_BRUTEFORCE_SL2)
     matches = matcher.match(des1, des2, None)
     matches = sorted(matches, key=lambda x: x.distance)
-    img3 = cv2.drawMatches(img1, kp1, img2, kp2, matches, None)
 
-    h = find_homography(matches, kp1, kp2)
+    matches_corrected = [matches[0], matches[4], matches[22], matches[25]]
+    img3 = cv2.drawMatches(img1, kp1, img2, kp2, matches_corrected, None)
+
+    M = find_homography(matches_corrected, kp1, kp2)
     height, width, channel = img1.shape
-    img4 = cv2.warpPerspective(img2, h, (width, height))
+    img4 = cv2.warpPerspective(img2, M, (width, height))
+
+    # h, w, d = img1.shape
+    # pts = np.float32([[0, 0], [0, h - 1], [w - 1, h - 1], [w - 1, 0]]).reshape(-1, 1, 2)
+    # dst = cv2.perspectiveTransform(pts, M)
+    # img4 = cv2.polylines(img2, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
 
     # img1[dst1 > 0.1 * dst1.max()] = [0, 0, 255]
     # img2[dst2 > 0.1 * dst2.max()] = [0, 0, 255]
 
-    # cv2.imshow('img1', img1)
-    # cv2.imshow('img2', img2)
-    cv2.imshow('img3', img3)
-    cv2.imshow('img4', img4)
-    if cv2.waitKey(0) & 0xff == 27:
-        cv2.destroyAllWindows()
+    fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+    ax = axes.ravel()
+    ax[0].imshow(img1)
+    ax[0].set_title("Original")
+    ax[1].imshow(img2)
+    ax[1].set_title("Template")
+    fig.tight_layout()
+    plt.show()
+
+    ax = plt.subplot()
+    ax.imshow(img3)
+    ax.set_title("Matched")
+    plt.show()
+
+    ax = plt.subplot()
+    ax.imshow(img4)
+    ax.set_title("Recovered")
+    plt.show()
 
 
 if __name__ == '__main__':
