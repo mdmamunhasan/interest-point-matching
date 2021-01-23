@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 import skimage
 import pywt
 
+
 def get_magnitude(image):
     dft = np.fft.fft2(image)
     fshift = np.fft.fftshift(dft)
@@ -17,6 +18,7 @@ def get_magnitude(image):
     # magnitude_spectrum = 20 * np.log(cv2.magnitude(dft_shift[:, :, 0], dft_shift[:, :, 1]))
 
     return magnitude_spectrum
+
 
 def get_patch_image(image, patch_center):
     # define some values
@@ -78,6 +80,8 @@ def get_keypoints_with_descriptor(img, fast=None, star=None, orb=None, sift=None
         surf = cv2.xfeatures2d.SURF_create(hessianThreshold=1000, nOctaves=10)
         kp, des = surf.detectAndCompute(img, None)
     else:
+        corners, dst, gray = get_harris_corners(img)
+        kp = get_key_points(corners, 5)
         brief = cv2.xfeatures2d.BriefDescriptorExtractor_create()
         kp, des = brief.compute(img, kp)
 
@@ -112,21 +116,25 @@ def main():
 
     # matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
     matcher = cv2.DescriptorMatcher_create(cv2.DescriptorMatcher_BRUTEFORCE_HAMMING)
-    # # matcher = cv2.DescriptorMatcher_create(cv2.DescriptorMatcher_BRUTEFORCE_SL2)
+    # matcher = cv2.DescriptorMatcher_create(cv2.DescriptorMatcher_BRUTEFORCE_SL2)
     matches = matcher.match(des1, des2, None)
     matches = sorted(matches, key=lambda x: x.distance)
 
-    matches_corrected = [matches[0], matches[4], matches[22], matches[25]]
-    img3 = cv2.drawMatches(img1, kp1, img2, kp2, matches_corrected, None)
+    img3 = cv2.drawMatches(img1, kp1, img2, kp2, matches, None)
 
-    M = find_homography(matches_corrected, kp1, kp2)
+    # M = find_homography(matches, kp2, kp1)
+
+    points1 = np.array([
+        [0, 0], [294, 0], [294, 400], [0, 400]
+    ])
+    points2 = np.array([
+        [242, 194], [496, 189], [582, 484], [154, 488]
+    ])
+    M, _ = cv2.findHomography(points2, points1, cv2.RANSAC, 5.0)
     height, width, channel = img1.shape
     img4 = cv2.warpPerspective(img2, M, (width, height))
 
-    # h, w, d = img1.shape
-    # pts = np.float32([[0, 0], [0, h - 1], [w - 1, h - 1], [w - 1, 0]]).reshape(-1, 1, 2)
-    # dst = cv2.perspectiveTransform(pts, M)
-    # img4 = cv2.polylines(img2, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
+    print(M)
 
     # img1[dst1 > 0.1 * dst1.max()] = [0, 0, 255]
     # img2[dst2 > 0.1 * dst2.max()] = [0, 0, 255]
